@@ -43,3 +43,8 @@ $sqlite = "C:\Program Files (x86)\Admin Arsenal\PDQ Inventory\sqlite3.exe"
 
 #Define the path to PDQInventory.exe
 $PDQInvExecPath = "C:\Program Files (x86)\Admin Arsenal\PDQ Inventory\PDQInventory.exe"
+
+#Define headers for output CSV file
+$OutputCSVHeaderLine = "Computer Name,$ShipDateCustomFieldName,$EntitlementEndDateCustomFieldName"
+
+#TODO: Organize the settings more logically

@@ -14,7 +14,7 @@ Add-Type -AssemblyName System.Web # https://www.undocumented-features.com/2020/0
 
 .NOTES
     Release Date: 2021-05-11T13:01
-    Last Updated: 2021-05-11T17:59
+    Last Updated: 2021-05-11T18:14
    
     Author: Luke Nichols
     Github link: https://github.com/jlukenichols/KUDellWarrantyChecker
@@ -44,7 +44,7 @@ Function Get-AuthToken {
         $Auth = Invoke-WebRequest "$($requestAccessTokenUri)?client_id=$($clientID)&client_secret=$($clientSecret)&grant_type=client_credentials" -Method Post #https://www.powershellgallery.com/packages/Get-DellWarranty/2.0.0.0
 
         #Convert result from JSON to PS object
-        $Auth = $Auth | ConvertFrom-Json
+        $Auth = ($Auth | ConvertFrom-Json)
 
         $script:AuthenticationResult = $Auth.access_token
         $script:TokenExpiration = (get-date).AddSeconds($Auth.expires_in)
@@ -136,15 +136,19 @@ if ($TokenExpiration -lt (Get-Date)) {
     Write-Host "Found previously generated auth token that is still valid."
 }
 
-#Start building CSV output file
-$OutputCSVHeaderLine = "Computer Name,$ShipDateCustomFieldName,$EntitlementEndDateCustomFieldName"
+#TODO: Wrap this into a function
+
 #Create new file, overwriting old one
+$LogMessage = "Creating new output file at $FullPathToOutputCSV"
+Write-Log $LogMessage
 $OutputCSVHeaderLine | Out-File $FullPathToOutputCSV
 
 #Create CSV file object for input file
 $InputCSVFile = Import-CSV $FullPathToInputCSV
 
 #Iterate through CSV file
+$LogMessage = "Looping through input file..."
+Write-Log $LogMessage
 foreach ($line in $InputCSVFile) {
     Write-Host "`nComputerName: $($line."Computer Name")"
     Write-Host "DellServiceTag: $($line."Computer Serial Number")"
@@ -164,6 +168,13 @@ foreach ($line in $InputCSVFile) {
 #TODO: Write code to detect if the custom fields exist already and create them if they don't
 
 #Import data into PDQ Inventory
+$LogMessage = "Importing data into PDQ Inventory..."
+Write-Log $LogMessage
+#https://www.pdq.com/blog/adding-custom-fields-multiple-computers-powershell/
 & $PDQInvExecPath ImportCustomFields -FileName "$FullPathToOutputCSV" -ComputerColumn "Computer Name" -CustomFields "$ShipDateCustomFieldName=$ShipDateCustomFieldName,$EntitlementEndDateCustomFieldName=$EntitlementEndDateCustomFieldName"
+#TODO: Wrap this into a function
+
+$LogMessage = "Closing log file."
+Write-Log $LogMessage
 
 #-------------------------- End main script body --------------------------
