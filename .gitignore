@@ -1,0 +1,4 @@
+# ignore any log files
+*.log
+# ignore custom settings file so you don't accidentally distribute sensitive info to other people using the repo
+CustomSettings.ps1
