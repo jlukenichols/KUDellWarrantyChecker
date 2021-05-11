@@ -2,3 +2,5 @@
 *.log
 # ignore custom settings file so you don't accidentally distribute sensitive info to other people using the repo
 CustomSettings.ps1
+# ignore output CSV file so you don't accidentally distribute sensitive info to other people using the repo
+DellWarrantyData.CSV

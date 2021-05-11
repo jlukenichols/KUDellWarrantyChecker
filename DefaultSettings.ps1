@@ -6,7 +6,7 @@ $LoggingMode = $true #Setting this to $false will prevent all logging
 $VerboseLogging = $true #Setting this to $true will output log strings to both the console and the log file
 
 #Define the root path of the running script
-$myPSScriptRoot = "C:\Scripts\WakeOnLANFromCSV"
+$myPSScriptRoot = "C:\Scripts\KUDellWarrantyChecker"
 
 #Define the path to the log file
 [string]$LogFilePath = "$($myPSScriptRoot)\logs\WakeOnLANFromCSV_$($currentYear)-$($currentMonth)-$($currentDay)T$($currentHour)$($currentMinute)$($currentSecond)_$($env:computername).log"
@@ -21,8 +21,25 @@ $FullPathToInputCSV = "$($myPSScriptRoot)\ExampleInput.CSV"
 #Can be a UNC path.
 $FullPathToOutputCSV = "$($myPSScriptRoot)\DellWarrantyData.CSV"
 
-#Define your Dell warranty API project name. This will be the "client_id" when you generate your token.
+#Define your Dell warranty API key. This will be the "client_id" when you generate your token.
 $DellWarrantyProjectName = "" # Create your own in Dell TechDirect https://techdirect.dell.com/Portal/APIs.aspx If you run into issues email APIs_TechDirect@dell.com
 
-#Define your Dell warranty API key. This will be the "client_id" when you generate your token.
+#Define your Dell warranty API key secret. This will be the "client_secret" when you generate your token.
 $DellWarrantyAPIKey = "" # Get your own from Dell TechDirect https://techdirect.dell.com/Portal/APIs.aspx If you run into issues email APIs_TechDirect@dell.com
+
+#Define the name of your PDQ Inventory custom field that will store the "Ship Date" field from the API query.
+#This assumes you have already created the custom field with the date/time data type.
+$ShipDateCustomFieldName = "Purchase Date"
+
+#Define the name of your PDQ Inventory custom field that will store the entitlement end date from the API query
+#This assumes you have already created the custom field with the date/time data type.
+$EntitlementEndDateCustomFieldName = "Warranty End Date"
+
+#Define the path to your PDQ Inventory database.
+$DBPath = "C:\programdata\Admin Arsenal\PDQ Inventory\Database.db"
+
+#Define the path to sqlite3.exe
+$sqlite = "C:\Program Files (x86)\Admin Arsenal\PDQ Inventory\sqlite3.exe"
+
+#Define the path to PDQInventory.exe
+$PDQInvExecPath = "C:\Program Files (x86)\Admin Arsenal\PDQ Inventory\PDQInventory.exe"

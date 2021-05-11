@@ -1,4 +1,8 @@
 Clear-Host
+#This is required because you will get a TLS error otherwise. I think Invoke-RestMethod uses TLS 1.0 by default or something.
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 # https://stackoverflow.com/questions/41618766/powershell-invoke-webrequest-fails-with-ssl-tls-secure-channel
+#Required for the API lookups, not sure why.
+Add-Type -AssemblyName System.Web # https://www.undocumented-features.com/2020/06/30/powershell-oauth-authentication-two-ways/
 
 <#
 .SYNOPSIS
@@ -10,7 +14,7 @@ Clear-Host
 
 .NOTES
     Release Date: 2021-05-11T13:01
-    Last Updated: 2021-05-11T14:04
+    Last Updated: 2021-05-11T17:59
    
     Author: Luke Nichols
     Github link: https://github.com/jlukenichols/KUDellWarrantyChecker
@@ -31,14 +35,19 @@ Function Get-AuthToken {
         [string]$clientID,
         [string]$clientSecret
     )
-    $encodedSecret = [System.Web.HttpUtility]::UrlEncode($clientSecret)
 
-    $requestAccessTokenUri = "https://apigtwb2c.us.dell.com/auth/oauth/v2/token"
-    $body = "grant_type=client_credentials&client_id=$clientID&client_id=$encodedSecret"
+    $requestAccessTokenUri = "https://apigtwb2c.us.dell.com/auth/oauth/v2/token" # Production Endpoint    
+    $body = "client_id=$($clientID)&client_secret=$($clientSecret)&grant_type=client_credentials"
     $contentType = "application/x-www-form-urlencoded"
     try {
-        $Token = Invoke-RestMethod -Method Post -Uri $requestAccessTokenUri -Body $body -ContentType $contentType
-        $script:AuthenticationResult = Get-AuthToken -applicationId $ClientId -secret $ClientSecret
+        #Retrieve token
+        $Auth = Invoke-WebRequest "$($requestAccessTokenUri)?client_id=$($clientID)&client_secret=$($clientSecret)&grant_type=client_credentials" -Method Post #https://www.powershellgallery.com/packages/Get-DellWarranty/2.0.0.0
+
+        #Convert result from JSON to PS object
+        $Auth = $Auth | ConvertFrom-Json
+
+        $script:AuthenticationResult = $Auth.access_token
+        $script:TokenExpiration = (get-date).AddSeconds($Auth.expires_in)
     }
     catch {
         throw
@@ -49,17 +58,21 @@ Function Get-AuthToken {
 Function Retrieve-WarrantyData {
     Param (
         [string]$AuthToken,
-        [array]$DellSvcTags
+        [string]$DellSvcTag
     )
 
     $warrantyCheckUri = "https://apigtwb2c.us.dell.com/PROD/sbil/eapi/v5/asset-entitlements"
     $headers = @{
-        'Authorization' = $AuthToken
+        'Authorization' = "Bearer $AuthToken"
     }
-    $body = $DellSvcTags
-
+    $parameters = @{
+        'servicetags' = $DellSvcTag
+    }
+    
     try {
-        $WarrantyEndDate = Invoke-RestMethod -Method GET -Uri $warrantyCheckUri -Headers $headers -Body $body
+        $APIResults = Invoke-RestMethod -Uri $warrantyCheckUri -Headers $headers -Body $parameters -Method GET
+        $APIResults = ($APIResults | ConvertTo-Json | ConvertFrom-Json)
+        return $APIResults
     } catch {
         throw
     }
@@ -93,58 +106,64 @@ if (Test-Path .\CustomSettings.ps1) {
 
 #-------------------------- Start main script body --------------------------
 
-#TODO: Add code to generate Dell API bearer token using client_id and client_secret
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 # https://stackoverflow.com/questions/41618766/powershell-invoke-webrequest-fails-with-ssl-tls-secure-channel
-Add-Type -AssemblyName System.Web #Required for the API lookups, not sure why. See https://www.undocumented-features.com/2020/06/30/powershell-oauth-authentication-two-ways/
+# Self-elevate the script if required
+# https://blog.expta.com/2017/03/how-to-self-elevate-powershell-script.html
+if (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')) {
+ if ([int](Get-CimInstance -Class Win32_OperatingSystem | Select-Object -ExpandProperty BuildNumber) -ge 6000) {
+  $CommandLine = "-File `"" + $MyInvocation.MyCommand.Path + "`" " + $MyInvocation.UnboundArguments
+  Start-Process -FilePath PowerShell.exe -Verb Runas -ArgumentList $CommandLine
+  Exit
+ }
+}
 
-#Get auth token. Lasts for 3600 seconds (1 hour).
-$AuthenticationResult = Get-AuthToken -clientID $DellWarrantyProjectName -clientSecret $DellWarrantyAPIKey
+#Clean out old log files
+Delete-OldFiles -NumberOfDays 30 -PathToLogs "$($myPSScriptRoot)\logs"
 
-#Create CSV file object
+#Start the log file
+Write-Log $LogMessage
+
+#Show the path to the input file in the log
+$LogMessage = "`$FullPathToCSV = $FullPathToCSV"
+Write-Log $LogMessage
+
+#Get auth token. Lasts for 3600 seconds.
+if ($TokenExpiration -lt (Get-Date)) {
+    #Token is expired. Get a new one.
+    Write-Host "Generating new auth token..."
+    Get-AuthToken -clientID $DellWarrantyAPIKey -clientSecret $DellWarrantyAPIKeySecret #token is written to $AuthenticationResult within the function
+} else {
+    #Token is still valid. Keep using it.
+    Write-Host "Found previously generated auth token that is still valid."
+}
+
+#Start building CSV output file
+$OutputCSVHeaderLine = "Computer Name,$ShipDateCustomFieldName,$EntitlementEndDateCustomFieldName"
+#Create new file, overwriting old one
+$OutputCSVHeaderLine | Out-File $FullPathToOutputCSV
+
+#Create CSV file object for input file
 $InputCSVFile = Import-CSV $FullPathToInputCSV
 
 #Iterate through CSV file
 foreach ($line in $InputCSVFile) {
-    Write-Host "ComputerName: $($line."Computer Name") DellServiceTag: $($line."Computer Serial Number")"
-    #TODO: Write code to pull its warranty end date via Dell API for each service tag and dump it to an output CSV
-    Retrieve-WarrantyData -AuthToken $AuthenticationResult -DellSvcTags $($line."Computer Serial Number")
-    pause
+    Write-Host "`nComputerName: $($line."Computer Name")"
+    Write-Host "DellServiceTag: $($line."Computer Serial Number")"
+    $WarrantyData = Retrieve-WarrantyData -AuthToken $AuthenticationResult -DellSvcTag $($line."Computer Serial Number")
+    $ShipDate = $($WarrantyData.ShipDate)
+
+    #Because one device can have various warranties, just grab the biggest (maximum) date
+    $EntitlementEndDate = ($($WarrantyData.entitlements.endDate) | measure -maximum).maximum
+
+    #Build new line for output CSV file
+    $CSVLine = "$($line."Computer Name"),$($ShipDate),$($EntitlementEndDate)"
+
+    #Append new line to output CSV file
+    $CSVLine | Out-File $FullPathToOutputCSV -Append
 }
 
-#TODO: Write code to import data from output CSV into PDQ Inventory
+#TODO: Write code to detect if the custom fields exist already and create them if they don't
+
+#Import data into PDQ Inventory
+& $PDQInvExecPath ImportCustomFields -FileName "$FullPathToOutputCSV" -ComputerColumn "Computer Name" -CustomFields "$ShipDateCustomFieldName=$ShipDateCustomFieldName,$EntitlementEndDateCustomFieldName=$EntitlementEndDateCustomFieldName"
 
 #-------------------------- End main script body --------------------------
-
-<# Info from email from Dell
-
-As we use OAuth2.0 as the authorization hence it’s a two-step process to access warranty endpoint(s): 
-
-1.                   Generate Bearer token using client_id and client_secret. The Bearer Token will be valid for 3600 seconds, you should generate token before it expires.
-
-Kindly refrain to generate token for every call once you move to production instance 
-
-HTTP POST Method ; URI : https://apigtwb2c.us.dell.com/auth/oauth/v2/token
-
-requestBody
-
-    grant_type = client_credentials
-
-    client_id = your client_id
-
-    client_secret = your client_secret
-
-                          Content-Type = application/x-www-form-urlencoded
- 
-
-2.                   Use the Bearer token to make Warranty API call (new endpoints for warranty V5 API) wherein Bearer token should be passed as Header whilst servicetag(s) as query parameter - refer Warranty technical specs for more details
-
-HTTP GET Method -  URI :   https://apigtwb2c.us.dell.com/PROD/sbil/eapi/v5/asset-entitlements
-
-Headers
-
-Authorization = Bearer token
-
-Query Param (body) =
-                                            servicetags = tag(s) e.g., tag1,tag2, tag3…
-
-#>
