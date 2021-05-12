@@ -3,6 +3,7 @@ Clear-Host
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 # https://stackoverflow.com/questions/41618766/powershell-invoke-webrequest-fails-with-ssl-tls-secure-channel
 #Required for the API lookups, not sure why.
 Add-Type -AssemblyName System.Web # https://www.undocumented-features.com/2020/06/30/powershell-oauth-authentication-two-ways/
+$PSScriptRoot
 
 <#
 .SYNOPSIS
@@ -14,7 +15,7 @@ Add-Type -AssemblyName System.Web # https://www.undocumented-features.com/2020/0
 
 .NOTES
     Release Date: 2021-05-11T13:01
-    Last Updated: 2021-05-11T18:14
+    Last Updated: 2021-05-12T10:09
    
     Author: Luke Nichols
     Github link: https://github.com/jlukenichols/KUDellWarrantyChecker
@@ -24,6 +25,9 @@ Add-Type -AssemblyName System.Web # https://www.undocumented-features.com/2020/0
 #>
 
 #-------------------------- Begin defining functions --------------------------
+
+#Change working directory
+cd $myPSScriptRoot
 
 # Dot-source functions for writing to log files
 . .\functions\Write-Log.ps1
@@ -48,8 +52,7 @@ Function Get-AuthToken {
 
         $script:AuthenticationResult = $Auth.access_token
         $script:TokenExpiration = (get-date).AddSeconds($Auth.expires_in)
-    }
-    catch {
+    } catch {
         throw
     }
 }
@@ -81,6 +84,16 @@ Function Retrieve-WarrantyData {
 #-------------------------- End defining functions --------------------------
 
 #-------------------------- Set any initial values --------------------------
+
+#Dot-source settings file
+if (Test-Path .\CustomSettings.ps1) {
+    . .\CustomSettings.ps1
+    $LogMessage = "Importing settings from CustomSettings.ps1"
+} else {
+    . .\DefaultSettings.ps1
+    $LogMessage = "Importing settings from DefaultSettings.ps1"
+}
+
 $ScriptExecutionDate = Get-Date
 
 #Grab the individual portions of the date and put them in vars
@@ -93,28 +106,19 @@ $currentHour = $($currentDate.Hour).ToString("00")
 $currentMinute = $($currentDate.Minute).ToString("00")
 $currentSecond = $($currentDate.Second).ToString("00")
 
-#Dot-source settings file
-if (Test-Path .\CustomSettings.ps1) {
-    . .\CustomSettings.ps1
-    $LogMessage = "Importing settings from CustomSettings.ps1"
-} else {
-    . .\DefaultSettings.ps1
-    $LogMessage = "Importing settings from DefaultSettings.ps1"
-}
-
 #-------------------------- End setting initial values --------------------------
 
 #-------------------------- Start main script body --------------------------
 
 # Self-elevate the script if required
 # https://blog.expta.com/2017/03/how-to-self-elevate-powershell-script.html
-if (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')) {
+<#if (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')) {
  if ([int](Get-CimInstance -Class Win32_OperatingSystem | Select-Object -ExpandProperty BuildNumber) -ge 6000) {
   $CommandLine = "-File `"" + $MyInvocation.MyCommand.Path + "`" " + $MyInvocation.UnboundArguments
   Start-Process -FilePath PowerShell.exe -Verb Runas -ArgumentList $CommandLine
   Exit
  }
-}
+}#>
 
 #Clean out old log files
 Delete-OldFiles -NumberOfDays 30 -PathToLogs "$($myPSScriptRoot)\logs"
@@ -123,22 +127,24 @@ Delete-OldFiles -NumberOfDays 30 -PathToLogs "$($myPSScriptRoot)\logs"
 Write-Log $LogMessage
 
 #Show the path to the input file in the log
-$LogMessage = "`$FullPathToCSV = $FullPathToCSV"
+$LogMessage = "`$FullPathToCSV = $FullPathToInputCSV"
 Write-Log $LogMessage
 
 #Get auth token. Lasts for 3600 seconds.
 if ($TokenExpiration -lt (Get-Date)) {
     #Token is expired. Get a new one.
-    Write-Host "Generating new auth token..."
+    $LogMessage = "Generating new auth token..."
+    Write-Log $LogMessage
     Get-AuthToken -clientID $DellWarrantyAPIKey -clientSecret $DellWarrantyAPIKeySecret #token is written to $AuthenticationResult within the function
 } else {
     #Token is still valid. Keep using it.
-    Write-Host "Found previously generated auth token that is still valid."
+    $LogMessage = "Found previously generated auth token that is still valid."
+    Write-Log $LogMessage
 }
 
 #TODO: Wrap this into a function
 
-#Create new file, overwriting old one
+#Create new output file, overwriting old one
 $LogMessage = "Creating new output file at $FullPathToOutputCSV"
 Write-Log $LogMessage
 $OutputCSVHeaderLine | Out-File $FullPathToOutputCSV
@@ -150,13 +156,15 @@ $InputCSVFile = Import-CSV $FullPathToInputCSV
 $LogMessage = "Looping through input file..."
 Write-Log $LogMessage
 foreach ($line in $InputCSVFile) {
-    Write-Host "`nComputerName: $($line."Computer Name")"
-    Write-Host "DellServiceTag: $($line."Computer Serial Number")"
+    #Write-Host "`nComputerName: $($line."Computer Name")"
+    #Write-Host "DellServiceTag: $($line."Computer Serial Number")"
     $WarrantyData = Retrieve-WarrantyData -AuthToken $AuthenticationResult -DellSvcTag $($line."Computer Serial Number")
     $ShipDate = $($WarrantyData.ShipDate)
 
     #Because one device can have various warranties, just grab the biggest (maximum) date
     $EntitlementEndDate = ($($WarrantyData.entitlements.endDate) | measure -maximum).maximum
+
+    $WarrantyData
 
     #Build new line for output CSV file
     $CSVLine = "$($line."Computer Name"),$($ShipDate),$($EntitlementEndDate)"
