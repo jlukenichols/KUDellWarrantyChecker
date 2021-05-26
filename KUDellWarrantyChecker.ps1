@@ -15,7 +15,7 @@ $PSScriptRoot
 
 .NOTES
     Release Date: 2021-05-11T13:01
-    Last Updated: 2021-05-12T10:09
+    Last Updated: 2021-05-26T12:35
    
     Author: Luke Nichols
     Github link: https://github.com/jlukenichols/KUDellWarrantyChecker
@@ -179,7 +179,7 @@ foreach ($line in $InputCSVFile) {
 $LogMessage = "Importing data into PDQ Inventory..."
 Write-Log $LogMessage
 #https://www.pdq.com/blog/adding-custom-fields-multiple-computers-powershell/
-& $PDQInvExecPath ImportCustomFields -FileName "$FullPathToOutputCSV" -ComputerColumn "Computer Name" -CustomFields "$ShipDateCustomFieldName=$ShipDateCustomFieldName,$EntitlementEndDateCustomFieldName=$EntitlementEndDateCustomFieldName"
+& $PDQInvExecPath ImportCustomFields -FileName "$FullPathToOutputCSV" -ComputerColumn "Computer Name" -CustomFields "$ShipDateCustomFieldName=$ShipDateCustomFieldName,$EntitlementEndDateCustomFieldName=$EntitlementEndDateCustomFieldName" -AllowOverwrite
 #TODO: Wrap this into a function
 
 $LogMessage = "Closing log file."
