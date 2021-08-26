@@ -1,2 +1,2 @@
 # KUDellWarrantyChecker
- Reads a list of Dell service tags from a CSV file, performs a Dell API lookup to get Dell warranty data, dumps that data into a CSV file, then imports it into PDQ Inventory
+ Reads a list of Dell service tags from a CSV file, performs a Dell API lookup to get Dell warranty data, dumps that data into a CSV file, then imports it into PDQ Inventory. You will need to manually create two custom variables in PDQ Inventory. The field names should be "Warranty End Date" and "Purchase Date" and the data type for both should be "Date & Time". If you want to change the variable names then you will have to modify the "$ShipDateCustomFieldName" and "$EntitlementEndDateCustomFieldName" values in your CustomSettings.ps1 file.
