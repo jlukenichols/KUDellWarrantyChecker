@@ -1,5 +1,7 @@
-#You can modify this file or create your own CustomSettings.ps1 file.
+#DO NOT MODIFY THIS FILE. 
+#Create your own CustomSettings.ps1 file by duplicating this file and renaming it.
 #If CustomSettings.ps1 exists then it will be read instead of this file.
+#If you modify this file instead of creating a CustomSettings.ps1 file it will overwrite your configuration when you pull a new version from GitHub.
 
 #Set variables for Write-Log function
 $LoggingMode = $true #Setting this to $false will prevent all logging
