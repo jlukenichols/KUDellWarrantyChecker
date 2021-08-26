@@ -17,6 +17,9 @@ $myPSScriptRoot = $PSScriptRoot
 #Can be a UNC path.
 $FullPathToInputCSV = "$($myPSScriptRoot)\ExampleInput.CSV"
 
+#Define the delimiter used in the input CSV
+$InputCSVDelimiter = ","
+
 #Define the path to the CSV file where you will output the warranty data.
 #Can be a UNC path.
 $FullPathToOutputCSV = "$($myPSScriptRoot)\DellWarrantyData.CSV"

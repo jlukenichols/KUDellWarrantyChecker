@@ -1,10 +1,3 @@
-Clear-Host
-#This is required because you will get a TLS error otherwise. I think Invoke-RestMethod uses TLS 1.0 by default or something.
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 # https://stackoverflow.com/questions/41618766/powershell-invoke-webrequest-fails-with-ssl-tls-secure-channel
-#Required for the API lookups, not sure why.
-Add-Type -AssemblyName System.Web # https://www.undocumented-features.com/2020/06/30/powershell-oauth-authentication-two-ways/
-$PSScriptRoot
-
 <#
 .SYNOPSIS
   Name: KUDellWarrantyChecker.ps1
@@ -15,7 +8,7 @@ $PSScriptRoot
 
 .NOTES
     Release Date: 2021-05-11T13:01
-    Last Updated: 2021-05-26T12:35
+    Last Updated: 2021-08-26T13:49
    
     Author: Luke Nichols
     Github link: https://github.com/jlukenichols/KUDellWarrantyChecker
@@ -23,6 +16,44 @@ $PSScriptRoot
 .EXAMPLE
     Just run the script without parameters, it's not designed to be called like a function
 #>
+
+#-------------------------- Set any initial values --------------------------
+
+#Clear the console for easier PowerShell ISE debugging
+Clear-Host
+
+#This is required because you will get a TLS error otherwise. I think Invoke-RestMethod uses TLS 1.0 by default or something.
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 # https://stackoverflow.com/questions/41618766/powershell-invoke-webrequest-fails-with-ssl-tls-secure-channel
+#Required for the API lookups, not sure why.
+Add-Type -AssemblyName System.Web # https://www.undocumented-features.com/2020/06/30/powershell-oauth-authentication-two-ways/
+#Get the path of the running script
+$MyPSScriptRoot = $MyInvocation.MyCommand.Path
+$MyPSScriptRoot = Split-Path $MyPSScriptRoot -Parent
+#Change the working directory to the script root to fix issues with invalid file references after elevating
+Set-Location -Path $MyPSScriptRoot
+
+$ScriptExecutionDate = Get-Date
+
+#Grab the individual portions of the date and put them in vars
+[DateTime]$currentDate=Get-Date
+$currentYear = $($currentDate.Year)
+$currentMonth = $($currentDate.Month).ToString("00")
+$currentDay = $($currentDate.Day).ToString("00")
+
+$currentHour = $($currentDate.Hour).ToString("00")
+$currentMinute = $($currentDate.Minute).ToString("00")
+$currentSecond = $($currentDate.Second).ToString("00")
+
+#Dot-source settings file
+if (Test-Path .\CustomSettings.ps1) {
+    . .\CustomSettings.ps1
+    $LogMessage = "Importing settings from CustomSettings.ps1"
+} else {
+    . .\DefaultSettings.ps1
+    $LogMessage = "Importing settings from DefaultSettings.ps1"
+}
+
+#-------------------------- End setting initial values --------------------------
 
 #-------------------------- Begin defining functions --------------------------
 
@@ -83,42 +114,7 @@ Function Retrieve-WarrantyData {
 
 #-------------------------- End defining functions --------------------------
 
-#-------------------------- Set any initial values --------------------------
-
-#Dot-source settings file
-if (Test-Path .\CustomSettings.ps1) {
-    . .\CustomSettings.ps1
-    $LogMessage = "Importing settings from CustomSettings.ps1"
-} else {
-    . .\DefaultSettings.ps1
-    $LogMessage = "Importing settings from DefaultSettings.ps1"
-}
-
-$ScriptExecutionDate = Get-Date
-
-#Grab the individual portions of the date and put them in vars
-[DateTime]$currentDate=Get-Date
-$currentYear = $($currentDate.Year)
-$currentMonth = $($currentDate.Month).ToString("00")
-$currentDay = $($currentDate.Day).ToString("00")
-
-$currentHour = $($currentDate.Hour).ToString("00")
-$currentMinute = $($currentDate.Minute).ToString("00")
-$currentSecond = $($currentDate.Second).ToString("00")
-
-#-------------------------- End setting initial values --------------------------
-
 #-------------------------- Start main script body --------------------------
-
-# Self-elevate the script if required
-# https://blog.expta.com/2017/03/how-to-self-elevate-powershell-script.html
-<#if (-Not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] 'Administrator')) {
- if ([int](Get-CimInstance -Class Win32_OperatingSystem | Select-Object -ExpandProperty BuildNumber) -ge 6000) {
-  $CommandLine = "-File `"" + $MyInvocation.MyCommand.Path + "`" " + $MyInvocation.UnboundArguments
-  Start-Process -FilePath PowerShell.exe -Verb Runas -ArgumentList $CommandLine
-  Exit
- }
-}#>
 
 #Clean out old log files
 Delete-OldFiles -NumberOfDays 30 -PathToLogs "$($myPSScriptRoot)\logs"
@@ -127,7 +123,10 @@ Delete-OldFiles -NumberOfDays 30 -PathToLogs "$($myPSScriptRoot)\logs"
 Write-Log $LogMessage
 
 #Show the path to the input file in the log
-$LogMessage = "`$FullPathToCSV = $FullPathToInputCSV"
+$LogMessage = "FullPathToInputCSV: $FullPathToInputCSV"
+Write-Log $LogMessage
+
+$LogMessage = "Checking if `$TokenExpiration $TokenExpiration is less than $(Get-Date)"
 Write-Log $LogMessage
 
 #Get auth token. Lasts for 3600 seconds.
@@ -142,22 +141,27 @@ if ($TokenExpiration -lt (Get-Date)) {
     Write-Log $LogMessage
 }
 
+$LogMessage = "`$Auth.expires_in: $($Auth.expires_in)"
+Write-Log $LogMessage
+
 #TODO: Wrap this into a function
 
-#Create new output file, overwriting old one
 $LogMessage = "Creating new output file at $FullPathToOutputCSV"
 Write-Log $LogMessage
+#Delete file if it already exists before proceeding to clear permissions
+if (Test-Path $FullPathToOutputCSV) {
+    Remove-Item -Path $FullPathToOutputCSV -Force
+}
+#Create new output file
 $OutputCSVHeaderLine | Out-File $FullPathToOutputCSV
 
 #Create CSV file object for input file
-$InputCSVFile = Import-CSV $FullPathToInputCSV
+$InputCSVFile = Import-CSV -Path $FullPathToInputCSV -Delimiter $InputCSVDelimiter
 
 #Iterate through CSV file
 $LogMessage = "Looping through input file..."
 Write-Log $LogMessage
 foreach ($line in $InputCSVFile) {
-    #Write-Host "`nComputerName: $($line."Computer Name")"
-    #Write-Host "DellServiceTag: $($line."Computer Serial Number")"
     $WarrantyData = Retrieve-WarrantyData -AuthToken $AuthenticationResult -DellSvcTag $($line."Computer Serial Number")
     $ShipDate = $($WarrantyData.ShipDate)
 
