@@ -20,7 +20,8 @@ $myPSScriptRoot = $PSScriptRoot
 $FullPathToInputCSV = "$($myPSScriptRoot)\ExampleInput.CSV"
 
 #Define the delimiter used in the input CSV
-$InputCSVDelimiter = ","
+#$InputCSVDelimiter = "," #Uncomment this line and replace the value between the quotes to hard-code a CSV delimiter different than the one in your region settings
+$InputCSVDelimiter = (Get-Culture).TextInfo.ListSeparator #Comment or remove this line if you want to hard-code a different CSV delimiter from the one in your region settings
 
 #Define the path to the CSV file where you will output the warranty data.
 #Can be a UNC path.
@@ -41,15 +42,18 @@ $ShipDateCustomFieldName = "Purchase Date"
 $EntitlementEndDateCustomFieldName = "Warranty End Date"
 
 #Define the path to your PDQ Inventory database.
-$DBPath = "C:\programdata\Admin Arsenal\PDQ Inventory\Database.db"
+$DBPath = "$($env:ProgramData)\Admin Arsenal\PDQ Inventory\Database.db"
 
 #Define the path to sqlite3.exe
-$sqlite = "C:\Program Files (x86)\Admin Arsenal\PDQ Inventory\sqlite3.exe"
+$sqlite = "${env:ProgramFiles(x86)}\Admin Arsenal\PDQ Inventory\sqlite3.exe"
 
 #Define the path to PDQInventory.exe
-$PDQInvExecPath = "C:\Program Files (x86)\Admin Arsenal\PDQ Inventory\PDQInventory.exe"
+$PDQInvExecPath = " ${env:ProgramFiles(x86)}\Admin Arsenal\PDQ Inventory\PDQInventory.exe"
 
 #Define headers for output CSV file
-$OutputCSVHeaderLine = "Computer Name,$ShipDateCustomFieldName,$EntitlementEndDateCustomFieldName"
+$OutputCSVHeaderLine = "Computer Name,$($ShipDateCustomFieldName),$($EntitlementEndDateCustomFieldName)"
+
+#Log rotation interval in days
+$LogRotationIntervalInDays = 30
 
 #TODO: Organize the settings more logically

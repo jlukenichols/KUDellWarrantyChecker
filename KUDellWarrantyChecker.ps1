@@ -8,7 +8,7 @@
 
 .NOTES
     Release Date: 2021-05-11T13:01
-    Last Updated: 2021-08-26T13:49
+    Last Updated: 2022-03-07T11:08
    
     Author: Luke Nichols
     Github link: https://github.com/jlukenichols/KUDellWarrantyChecker
@@ -117,7 +117,7 @@ Function Retrieve-WarrantyData {
 #-------------------------- Start main script body --------------------------
 
 #Clean out old log files
-Delete-OldFiles -NumberOfDays 30 -PathToLogs "$($myPSScriptRoot)\logs"
+Delete-OldFiles -NumberOfDays $LogRotationIntervalInDays -PathToLogs "$($myPSScriptRoot)\logs"
 
 #Start the log file
 Write-Log $LogMessage
@@ -141,6 +141,7 @@ if ($TokenExpiration -lt (Get-Date)) {
     Write-Log $LogMessage
 }
 
+#TODO: Fix this in the log. $Auth.expires_in appears to be empty.
 $LogMessage = "`$Auth.expires_in: $($Auth.expires_in)"
 Write-Log $LogMessage
 
@@ -168,13 +169,17 @@ foreach ($line in $InputCSVFile) {
     #Because one device can have various warranties, just grab the biggest (maximum) date
     $EntitlementEndDate = ($($WarrantyData.entitlements.endDate) | measure -maximum).maximum
 
-    $WarrantyData
+    #$WarrantyData
 
     #Build new line for output CSV file
     $CSVLine = "$($line."Computer Name"),$($ShipDate),$($EntitlementEndDate)"
 
     #Append new line to output CSV file
     $CSVLine | Out-File $FullPathToOutputCSV -Append
+
+    #Log what we're doing
+    $LogMessage = "Writing warranty data for computer $($line.'Computer Serial Number') to output CSV file..."
+    Write-Log $LogMessage
 }
 
 #TODO: Write code to detect if the custom fields exist already and create them if they don't
