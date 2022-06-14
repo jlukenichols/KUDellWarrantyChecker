@@ -34,11 +34,11 @@ $DellWarrantyAPIKey = "" # Get your own from Dell TechDirect https://techdirect.
 $DellWarrantyAPIKeySecret = "" # Get your own from Dell TechDirect https://techdirect.dell.com/Portal/APIs.aspx If you run into issues email APIs_TechDirect@dell.com
 
 #Define the name of your PDQ Inventory custom field that will store the "Ship Date" field from the API query.
-#This assumes you have already created the custom field with the date/time data type.
+#Script will attempt to create this custom field regardless of whether it already exists or not
 $ShipDateCustomFieldName = "Purchase Date"
 
 #Define the name of your PDQ Inventory custom field that will store the entitlement end date from the API query
-#This assumes you have already created the custom field with the date/time data type.
+#Script will attempt to create this custom field regardless of whether it already exists or not
 $EntitlementEndDateCustomFieldName = "Warranty End Date"
 
 #Define the path to your PDQ Inventory database.

@@ -8,13 +8,14 @@
 
 .NOTES
     Release Date: 2021-05-11T13:01
-    Last Updated: 2022-03-07T11:08
+    Last Updated: 2022-06-14T10:44
    
     Author: Luke Nichols
     Github link: https://github.com/jlukenichols/KUDellWarrantyChecker
 
 .EXAMPLE
-    Just run the script without parameters, it's not designed to be called like a function
+    Just run the script without parameters, it's not designed to be called like a function.
+    Make sure the user that you run the script as has permissions to access your input CSV file and also is a member of the console users in PDQ Inventory
 #>
 
 #-------------------------- Set any initial values --------------------------
@@ -44,13 +45,12 @@ $currentHour = $($currentDate.Hour).ToString("00")
 $currentMinute = $($currentDate.Minute).ToString("00")
 $currentSecond = $($currentDate.Second).ToString("00")
 
-#Dot-source settings file
+#Dot-source default settings file
+. .\DefaultSettings.ps1
+#Dot-source custom settings file if it exists. This will overwrite any duplicate values from DefaultSettings.ps1
 if (Test-Path .\CustomSettings.ps1) {
     . .\CustomSettings.ps1
-    $LogMessage = "Importing settings from CustomSettings.ps1"
-} else {
-    . .\DefaultSettings.ps1
-    $LogMessage = "Importing settings from DefaultSettings.ps1"
+    
 }
 
 #-------------------------- End setting initial values --------------------------
@@ -182,7 +182,11 @@ foreach ($line in $InputCSVFile) {
     Write-Log $LogMessage
 }
 
-#TODO: Write code to detect if the custom fields exist already and create them if they don't
+#TODO: Write code to detect if the custom fields exist already and create them if they don't. Currently it just blindly tries to create them on every run.
+
+#Create custom fields
+& $PDQInvExecPath CreateCustomField -Name "$ShipDateCustomFieldName" -Type DateTime
+& $PDQInvExecPath CreateCustomField -Name "$EntitlementEndDateCustomFieldName" -Type DateTime
 
 #Import data into PDQ Inventory
 $LogMessage = "Importing data into PDQ Inventory..."
