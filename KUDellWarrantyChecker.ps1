@@ -8,14 +8,14 @@
 
 .NOTES
     Release Date: 2021-05-11T13:01
-    Last Updated: 2022-06-14T10:44
+    Last Updated: 2022-07-07T10:18
    
     Author: Luke Nichols
     Github link: https://github.com/jlukenichols/KUDellWarrantyChecker
 
 .EXAMPLE
     Just run the script without parameters, it's not designed to be called like a function.
-    Make sure the user that you run the script as has permissions to access your input CSV file and also is a member of the console users in PDQ Inventory
+    Make sure the user that you run the script as has permissions to read your input CSV file and also is a member of the console users in PDQ Inventory
 #>
 
 #-------------------------- Set any initial values --------------------------
@@ -76,7 +76,7 @@ Function Get-AuthToken {
     $contentType = "application/x-www-form-urlencoded"
     try {
         #Retrieve token
-        $Auth = Invoke-WebRequest "$($requestAccessTokenUri)?client_id=$($clientID)&client_secret=$($clientSecret)&grant_type=client_credentials" -Method Post #https://www.powershellgallery.com/packages/Get-DellWarranty/2.0.0.0
+        $Auth = Invoke-WebRequest "$($requestAccessTokenUri)?client_id=$($clientID)&client_secret=$($clientSecret)&grant_type=client_credentials" -Method Post -UseBasicParsing #https://www.powershellgallery.com/packages/Get-DellWarranty/2.0.0.0
 
         #Convert result from JSON to PS object
         $Auth = ($Auth | ConvertFrom-Json)
@@ -163,7 +163,7 @@ $InputCSVFile = Import-CSV -Path $FullPathToInputCSV -Delimiter $InputCSVDelimit
 $LogMessage = "Looping through input file..."
 Write-Log $LogMessage
 foreach ($line in $InputCSVFile) {
-    $WarrantyData = Retrieve-WarrantyData -AuthToken $AuthenticationResult -DellSvcTag $($line."Computer Serial Number")
+    $WarrantyData = Retrieve-WarrantyData -AuthToken $AuthenticationResult -DellSvcTag $($line.$InputCSVComputerSerialNumberColumnTitle)
     $ShipDate = $($WarrantyData.ShipDate)
 
     #Because one device can have various warranties, just grab the biggest (maximum) date
@@ -178,7 +178,7 @@ foreach ($line in $InputCSVFile) {
     $CSVLine | Out-File $FullPathToOutputCSV -Append
 
     #Log what we're doing
-    $LogMessage = "Writing warranty data for computer $($line.'Computer Serial Number') to output CSV file..."
+    $LogMessage = "Writing warranty data for computer $($line.$InputCSVComputerNameColumnTitle) $($line.$InputCSVComputerSerialNumberColumnTitle) to output CSV file..."
     Write-Log $LogMessage
 }
 

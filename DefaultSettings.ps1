@@ -14,7 +14,7 @@ $myPSScriptRoot = $PSScriptRoot
 [string]$LogFilePath = "$($myPSScriptRoot)\logs\KUDellWarrantyChecker_$($currentYear)-$($currentMonth)-$($currentDay)T$($currentHour)$($currentMinute)$($currentSecond)_$($env:computername).log"
 
 #Define the path to the CSV file containing the Dell service tags.
-#Assumes the first line is the header line, there is a "Computer Name" field, and there is a "Computer Serial Number" field containing the Dell service tag.
+#Assumes the first line is the header line, there is a "Computer Name" field, and there is a "Computer Serial Number" field containing the Dell service tag. You can change these default column titles in CustomSettings.ps1
 #Can contain extra fields but they will be ignored.
 #Can be a UNC path.
 $FullPathToInputCSV = "$($myPSScriptRoot)\ExampleInput.CSV"
@@ -22,6 +22,10 @@ $FullPathToInputCSV = "$($myPSScriptRoot)\ExampleInput.CSV"
 #Define the delimiter used in the input CSV
 #$InputCSVDelimiter = "," #Uncomment this line and replace the value between the quotes to hard-code a CSV delimiter different than the one in your region settings
 $InputCSVDelimiter = (Get-Culture).TextInfo.ListSeparator #Comment or remove this line if you want to hard-code a different CSV delimiter from the one in your region settings
+
+#Define whatever you set as your column titles in your PDQ Inventory report which you are using for the input file in this script
+$InputCSVComputerNameColumnTitle = "Computer Name"
+$InputCSVComputerSerialNumberColumnTitle = "Computer Serial Number"
 
 #Define the path to the CSV file where you will output the warranty data.
 #Can be a UNC path.
