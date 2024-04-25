@@ -55,7 +55,7 @@ $sqlite = "${env:ProgramFiles(x86)}\Admin Arsenal\PDQ Inventory\sqlite3.exe"
 $PDQInvExecPath = " ${env:ProgramFiles(x86)}\Admin Arsenal\PDQ Inventory\PDQInventory.exe"
 
 #Define headers for output CSV file
-$OutputCSVHeaderLine = "Computer Name,$($ShipDateCustomFieldName),$($EntitlementEndDateCustomFieldName)"
+$OutputCSVHeaderLine = "$InputCSVComputerNameColumnTitle,$($ShipDateCustomFieldName),$($EntitlementEndDateCustomFieldName)"
 
 #Log rotation interval in days
 $LogRotationIntervalInDays = 30
