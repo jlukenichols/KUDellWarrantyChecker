@@ -172,7 +172,7 @@ foreach ($line in $InputCSVFile) {
     #$WarrantyData
 
     #Build new line for output CSV file
-    $CSVLine = "$($line."Computer Name"),$($ShipDate),$($EntitlementEndDate)"
+    $CSVLine = "$($line.$InputCSVComputerNameColumnTitle),$($ShipDate),$($EntitlementEndDate)"
 
     #Append new line to output CSV file
     $CSVLine | Out-File $FullPathToOutputCSV -Append
