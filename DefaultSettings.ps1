@@ -10,8 +10,14 @@ $VerboseLogging = $true #Setting this to $true will output log strings to both t
 #Define the root path of the running script
 $myPSScriptRoot = $PSScriptRoot
 
-#Define the path to the log file
-[string]$LogFilePath = "$($myPSScriptRoot)\logs\KUDellWarrantyChecker_$($currentYear)-$($currentMonth)-$($currentDay)T$($currentHour)$($currentMinute)$($currentSecond)_$($env:computername).log"
+# Define the path to the logs directory
+$LogFileDir = "$($myPSScriptRoot)\logs"
+
+# Define the name of the log file
+[string]$LogFileName = "KUDellWarrantyChecker_$($currentYear)-$($currentMonth)-$($currentDay)T$($currentHour)$($currentMinute)$($currentSecond)_$($env:computername).log"
+
+# Define the full path of the log file
+[string]$LogFilePath = "$LogFileDir\$LogFileName"
 
 #Define the path to the CSV file containing the Dell service tags.
 #Assumes the first line is the header line, there is a "Computer Name" field, and there is a "Computer Serial Number" field containing the Dell service tag. You can change these default column titles in CustomSettings.ps1
